@@ -1,6 +1,5 @@
 import numpy as np
 from PIL import Image, ImageEnhance, ImageDraw
-import cv2
 
 
 class ImagePerturber:

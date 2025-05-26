@@ -4,6 +4,7 @@ import string
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 from perturber import ImagePerturber
+import math
 
 
 def generate_random_text(length: int, charset: str) -> str:
@@ -12,17 +13,21 @@ def generate_random_text(length: int, charset: str) -> str:
 
 def generate_text_image(
     text: str,
-    font_path: str,
+    font_paths: list[str],
     font_size: int,
     image_size: tuple,
     bg_color: str = "white",
     char_color: str = "black",
     char_spacing: int = 4,
+    x_jitter: int = 0,  # ← 新增每字水平抖動範圍（像素）
+    y_jitter: int = 0,  # ← 新增每字垂直抖動範圍
+    wave_amplitude: float = 0.0,  # ← 新增文字弧度或波形振幅
 ) -> Image.Image:
     img = Image.new("RGB", image_size, color=bg_color)
+    # 隨機或由外部傳入決定要用哪個字型
+    chosen_font = random.choice(font_paths)
+    font = ImageFont.truetype(chosen_font, font_size)
     draw = ImageDraw.Draw(img)
-    font = ImageFont.truetype(font_path, font_size)
-
     widths = []
     for c in text:
         bbox = draw.textbbox((0, 0), c, font=font)
@@ -33,7 +38,12 @@ def generate_text_image(
     y = (image_size[1] - font_size) // 2
 
     for i, c in enumerate(text):
-        draw.text((x, y), c, font=font, fill=char_color)
+        dx = x + random.randint(-x_jitter, x_jitter)
+        dy = y + random.randint(-y_jitter, y_jitter)
+        # 若要做波形扭曲，可對 dy 再加上 sin 函數偏移
+        if wave_amplitude > 0:
+            dy += int(wave_amplitude * math.sin(2 * math.pi * i / len(text)))
+        draw.text((dx, dy), c, font=font, fill=char_color)
         x += widths[i] + char_spacing
     return img
 
@@ -52,7 +62,7 @@ def generate_dataset(
 
     charset = dataset_config["charset"]
     length = dataset_config["length"]
-    font_path = dataset_config["font_paths"][0]
+    font_paths = dataset_config["font_paths"]
     font_size = dataset_config["font_size"]
     image_size = tuple(dataset_config["image_size"])
     bg_color = dataset_config.get("bg_color", "white")
@@ -64,12 +74,15 @@ def generate_dataset(
             text = generate_random_text(length, charset)
             img = generate_text_image(
                 text,
-                font_path,
+                font_paths,  # ← 傳入 list 而非單一路徑
                 font_size,
                 image_size,
                 bg_color,
                 char_color,
                 char_spacing,
+                x_jitter=dataset_config.get("x_jitter", 0),
+                y_jitter=dataset_config.get("y_jitter", 0),
+                wave_amplitude=dataset_config.get("wave_amplitude", 0.0),
             )
             filename = f"{i:06d}.png"
             img.save(output_dir / filename)
@@ -87,21 +100,24 @@ def generate_dataset(
 
 if __name__ == "__main__":
     dataset_cfg = {
-        "length": 5,
+        "length": 1,  # 單字元
         "charset": string.ascii_lowercase + string.digits,
-        "font_paths": ["fonts/arial.ttf"],  # 確保此路徑存在
+        "font_paths": ["fonts/arial.ttf"],  # 或用 glob 掃描多字型
         "font_size": 42,
-        "image_size": (160, 60),
+        "image_size": (60, 60),  # 單字元圖像可小一點
         "bg_color": "white",
         "char_color": "black",
         "char_spacing": 4,
         "seed": 42,
+        "x_jitter": 5,
+        "y_jitter": 5,
+        "wave_amplitude": 2.0,
     }
 
     noise_cfg = {
-        "gaussian_noise": {"std": 15},
-        # "rotation": {"angle_range": (-15, 15)},
-        # "salt_pepper_noise": {"amount": 0.02, "s_vs_p": 0.5},
+        "gaussian_noise": {"std": 10},
+        "cutout": {"num_patches": 1, "max_size": 0.2},
+        "rotate": {"angle_range": (-10, 10)},
     }
 
     generate_dataset(
