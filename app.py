@@ -9,6 +9,7 @@ import streamlit as st
 from PIL import Image
 import pytesseract
 
+pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 from data import generate_text_image
 from perturber import ImagePerturber
 
@@ -91,6 +92,33 @@ with col2:
     st.subheader("Perturbed CAPTCHA")
     st.image(noisy_img, use_container_width=True)
 
+import numpy as np
+
+
+import cv2  # <-- 一定要加
+
+try:
+    # 將 PIL.Image 轉換成 numpy BGR 格式
+    arr = np.array(noisy_img)
+    # 如果是灰階，加一個通道
+    if arr.ndim == 2:
+        arr = cv2.cvtColor(arr, cv2.COLOR_GRAY2BGR)
+    elif arr.shape[2] == 4:
+        arr = cv2.cvtColor(arr, cv2.COLOR_RGBA2BGR)
+    else:
+        arr = cv2.cvtColor(arr, cv2.COLOR_RGB2BGR)
+
+    # 這兩個 yml 參數檔在 OpenCV 資料夾內，若沒有可以從 OpenCV repo 下載（下方補充）
+    model_path = cv2.data.haarcascades + "brisque_model_live.yml"
+    range_path = cv2.data.haarcascades + "brisque_range_live.yml"
+
+    # 建立評分器
+    brisque = cv2.quality.QualityBRISQUE_create(model_path, range_path)
+    score = brisque.compute(arr)[0][0]
+    st.info(f"BRISQUE 畫質指標 (OpenCV, 越低越好): **{score:.2f}**")
+except Exception as e:
+    st.warning(f"BRISQUE 計算失敗: {e}")
+
 
 # ========== Load Char-CNN Model ==========
 @st.cache_resource
@@ -171,17 +199,7 @@ if "pred_char" in locals() and "pred_ocr" in locals():
     st.write(
         f"Tesseract | 完全正確率(Accuracy): **{ocr_acc:.2f}** | 字元錯誤率(CER): **{ocr_cer:.3f}**"
     )
-import numpy as np
-from pybrisque import BRISQUE
 
-# ...在 app.py 檔案適當位置（通常顯示圖片之後、inference前後均可）...
-try:
-    # noisy_img 是 PIL.Image 物件
-    arr = np.array(noisy_img)
-    brisque_score = BRISQUE().score(arr)
-    st.info(f"BRISQUE (無參畫質指標, 越低越清晰): {brisque_score:.2f}")
-except Exception as e:
-    st.warning(f"BRISQUE 計算失敗: {e}")
 
 # ========== Download CAPTCHA ==========
 st.markdown("---")
