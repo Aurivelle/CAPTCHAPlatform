@@ -4,14 +4,6 @@ from PIL import Image
 import numpy as np
 import matplotlib.pyplot as plt
 
-# Optional: if you have imquality installed
-try:
-    from imquality import brisque
-
-    _HAS_BRISQUE = True
-except ImportError:
-    _HAS_BRISQUE = False
-
 
 def compute_accuracy(preds: List[str], labels: List[str]) -> float:
     """
@@ -53,19 +45,6 @@ def compute_CER(preds: List[str], labels: List[str]) -> float:
         total_edits += _edit_distance(p, l)
         total_chars += len(l)
     return total_edits / total_chars if total_chars > 0 else 0.0
-
-
-def compute_brisque_score(img: Union[str, Image.Image]) -> float:
-    """
-    計算圖像的 BRISQUE score (越小越好)。
-    需安裝 imquality 套件。
-    """
-    if not _HAS_BRISQUE:
-        raise ImportError("imquality.brisque 模塊未安裝，無法計算 BRISQUE score")
-    if isinstance(img, str):
-        img = Image.open(img)
-    arr = np.array(img)
-    return brisque.score(arr)
 
 
 def evaluate_folder(

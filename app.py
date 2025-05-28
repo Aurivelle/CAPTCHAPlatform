@@ -1,87 +1,38 @@
+import os
 import random
 import string
 import tempfile
 from pathlib import Path
+from metrics import compute_accuracy, compute_CER
 
 import streamlit as st
 from PIL import Image
+import pytesseract
 
-from pathlib import Path
-
-# 自動搜尋 fonts 目錄下所有 .ttf 字型
-FONT_DIR = Path("fonts")
-FONT_FILES = [str(p) for p in FONT_DIR.glob("*.ttf")]
-if not FONT_FILES:
-    FONT_FILES = ["fonts/arial.ttf"]
-
-# --- CAPTCHA 生成與擾動 ---
 from data import generate_text_image
 from perturber import ImagePerturber
 
-# --- 模型推論所需 ---
 import torch
 import torch.nn as nn
-from torchvision import models, transforms
-from torchvision.datasets import CIFAR100
+from torchvision import transforms
+from torch_char_cnn import SimpleCNN
 
+# ========== Streamlit App Configuration ==========
+st.set_page_config(page_title="CAPTCHA Demo with Char-CNN & OCR", layout="centered")
+st.title("🛡️ CAPTCHA Generator & Inference Demo")
 
-# ========== Streamlit App 設定 ==========
-st.set_page_config(page_title="Custom CAPTCHA Demo", layout="centered")
-st.title("🛡️ Customizable CAPTCHA Generator & Model Inference Demo")
-
-
-# ---- 載入並緩存模型 ----
-@st.cache_resource
-def load_model(model_path: str = "vgg16_cifar100_best.pt"):
-    device = torch.device("cpu")
-    model = models.vgg16(pretrained=False)
-    model.classifier[6] = nn.Linear(4096, 100)
-    model.load_state_dict(torch.load(model_path, map_location=device))
-    model.to(device).eval()
-    return model
-
-
-model = load_model()
-
-# ---- 定義推論 transform ----
-inference_transform = transforms.Compose(
-    [
-        transforms.Resize((224, 224)),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-    ]
-)
-
-
-# ---- 載入 CIFAR-100 類別名稱 ----
-@st.cache_data
-def load_label_names():
-    return CIFAR100(root="./data", train=False, download=True).classes
-
-
-label_names = load_label_names()
-
-
-# ========== 側欄：CAPTCHA 參數 ==========
+# ========== Sidebar: CAPTCHA Settings ==========
 with st.sidebar:
     st.header("CAPTCHA Settings")
     text_input = st.text_input("Input text (leave blank → random)")
-    length = st.slider("Text length", 4, 8, 5)
+    length = st.slider("Text length", 1, 5, 1)
     charset = string.ascii_lowercase + string.digits
+    font_dir = Path("fonts")
+    font_files = [str(p) for p in font_dir.glob("*.ttf")] or ["fonts/arial.ttf"]
+    font_choice = st.selectbox("Font", ["Random"] + font_files)
     font_size = st.slider("Font size", 24, 60, 42)
     bg_color = st.color_picker("Background color", "#FFFFFF")
     char_color = st.color_picker("Text color", "#000000")
-    st.markdown("---")
-    st.subheader("文字 & 佈局設定")
-
-    # 1) 字型選擇
-    font_choice = st.selectbox("Font", ["隨機"] + FONT_FILES)
-
-    # 2) 排版抖動參數
-    x_jitter = st.slider("水平抖動 (像素)", min_value=0, max_value=20, value=0)
-    y_jitter = st.slider("垂直抖動 (像素)", min_value=0, max_value=20, value=0)
-    wave_amplitude = st.slider("波形振幅", min_value=0.0, max_value=10.0, value=0.0)
-
     st.markdown("---")
     st.subheader("Perturbation Settings")
     apply_gauss = st.checkbox("Gaussian Noise")
@@ -89,46 +40,33 @@ with st.sidebar:
     apply_rot = st.checkbox("Rotation")
     rot_deg = st.slider("Rotation ±deg", 5, 45, 15)
     apply_cut = st.checkbox("Cutout")
-    apply_brightness = st.checkbox("Brightness")
-    if apply_brightness:
-        bright_min, bright_max = st.slider(
-            "Brightness factor 範圍", 0.5, 2.0, (0.8, 1.2)
-        )
-
-    apply_contrast = st.checkbox("Contrast")
-    if apply_contrast:
-        cont_min, cont_max = st.slider("Contrast factor 範圍", 0.5, 2.0, (0.8, 1.2))
     cut_num = st.slider("Num patches", 1, 5, 2)
     cut_size = st.slider("Max patch %", 5, 40, 20) / 100
+    apply_brightness = st.checkbox("Brightness")
+    if apply_brightness:
+        bright_min, bright_max = st.slider("Brightness range", 0.5, 2.0, (0.8, 1.2))
+    apply_contrast = st.checkbox("Contrast")
+    if apply_contrast:
+        cont_min, cont_max = st.slider("Contrast range", 0.5, 2.0, (0.8, 1.2))
 
-
-# ========== 生成原始 CAPTCHA ==========
+# ========== Generate CAPTCHA Image ==========
 text = (
     text_input[:length]
     if text_input
     else "".join(random.choice(charset) for _ in range(length))
 )
+font_paths = font_files if font_choice == "Random" else [font_choice]
 
-# 準備 font_paths list
-if font_choice == "隨機":
-    font_paths = FONT_FILES
-else:
-    font_paths = [font_choice]
-
-img = generate_text_image(
+orig_img = generate_text_image(
     text=text,
-    font_paths=font_paths,  # ← 傳入 list
+    font_paths=font_paths,
     font_size=font_size,
     image_size=(160, 60),
     bg_color=bg_color,
     char_color=char_color,
     char_spacing=4,
-    x_jitter=x_jitter,  # ← 新增
-    y_jitter=y_jitter,  # ← 新增
-    wave_amplitude=wave_amplitude,  # ← 新增
 )
 
-# ========== 應用擾動 ==========
 noise_cfg = {}
 if apply_gauss:
     noise_cfg["gaussian_noise"] = {"std": gauss_std}
@@ -142,34 +80,110 @@ if apply_contrast:
     noise_cfg["contrast"] = {"factor_range": (cont_min, cont_max)}
 
 perturber = ImagePerturber(seed=42)
-noisy_img = perturber.apply(img, noise_cfg) if noise_cfg else img
+noisy_img = perturber.apply(orig_img, noise_cfg) if noise_cfg else orig_img
 
-# ========== 顯示 CAPTCHA ==========
+# ========== Display CAPTCHA ==========
 col1, col2 = st.columns(2)
-col1.subheader("Original CAPTCHA")
-col1.image(img, use_container_width=True)
-col2.subheader("Perturbed CAPTCHA")
-col2.image(noisy_img, use_container_width=True)
+with col1:
+    st.subheader("Original CAPTCHA")
+    st.image(orig_img, use_container_width=True)
+with col2:
+    st.subheader("Perturbed CAPTCHA")
+    st.image(noisy_img, use_container_width=True)
 
 
-# ========== 模型攻擊 / 推論結果 ==========
-st.markdown("---")
-st.header("Model Inference Result")
+# ========== Load Char-CNN Model ==========
+@st.cache_resource
+def load_charcnn(model_path: str = "char_cnn.pt", num_classes: int = 36):
+    device = torch.device("cpu")
+    model = SimpleCNN(num_classes)
+    model.load_state_dict(torch.load(model_path, map_location=device))
+    model.to(device).eval()
+    return model
 
-try:
-    # 圖像預處理並推論
-    x = inference_transform(noisy_img).unsqueeze(0)  # shape (1,3,224,224)
+
+CHARSET = list(string.ascii_lowercase + string.digits)
+char_cnn = load_charcnn(num_classes=len(CHARSET))
+
+# ========= Transforms & Predict Functions ==========
+cnn_transform = transforms.Compose(
+    [
+        transforms.Resize((60, 60)),
+        transforms.Grayscale(1),
+        transforms.ToTensor(),
+        transforms.Normalize((0.5,), (0.5,)),
+    ]
+)
+
+
+def charcnn_predict(img: Image.Image) -> str:
+    x = cnn_transform(img).unsqueeze(0)
     with torch.no_grad():
-        out = model(x)
-    pred_idx = out.argmax(1).item()
-    pred_label = label_names[pred_idx]
+        out = char_cnn(x)
+    idx = out.argmax(1).item()
+    return CHARSET[idx]
 
-    st.success(f"🖥️ Model predicts: **{pred_label}**")
+
+def ocr_predict(img: Image.Image) -> str:
+    whitelist = "".join(CHARSET)
+    txt = pytesseract.image_to_string(
+        img, config="--psm 10 -c tessedit_char_whitelist=" + whitelist
+    )
+    return txt.strip()
+
+
+# ========== Inference Results ==========
+st.markdown("---")
+st.header("Model Inference Results")
+
+d1, d2 = st.columns(2)
+with d1:
+    try:
+        pred_char = charcnn_predict(noisy_img)
+        st.success(f"🖥️ Char-CNN predicts: **{pred_char}**")
+    except Exception as e:
+        st.error(f"Char-CNN inference failed: {e}")
+with d2:
+    try:
+        pred_ocr = ocr_predict(noisy_img)
+        st.info(f"📝 OCR predicts: **{pred_ocr}**")
+    except Exception as e:
+        st.error(f"OCR inference failed: {e}")
+
+# Ground truth and success indicator
+st.markdown("---")
+st.write(f"**Ground truth:** {text}")
+if "pred_char" in locals() and pred_char == text:
+    st.balloons()
+# ========== CAPTCHA 即時評量 ==========
+
+if "pred_char" in locals() and "pred_ocr" in locals():
+    st.subheader("CAPTCHA 評分標準（即時比較）")
+    # 封裝成 list，方便調用 metrics
+    cnn_acc = compute_accuracy([pred_char], [text])
+    cnn_cer = compute_CER([pred_char], [text])
+    ocr_acc = compute_accuracy([pred_ocr], [text])
+    ocr_cer = compute_CER([pred_ocr], [text])
+
+    st.write(
+        f"Char-CNN  | 完全正確率(Accuracy): **{cnn_acc:.2f}** | 字元錯誤率(CER): **{cnn_cer:.3f}**"
+    )
+    st.write(
+        f"Tesseract | 完全正確率(Accuracy): **{ocr_acc:.2f}** | 字元錯誤率(CER): **{ocr_cer:.3f}**"
+    )
+import numpy as np
+from pybrisque import BRISQUE
+
+# ...在 app.py 檔案適當位置（通常顯示圖片之後、inference前後均可）...
+try:
+    # noisy_img 是 PIL.Image 物件
+    arr = np.array(noisy_img)
+    brisque_score = BRISQUE().score(arr)
+    st.info(f"BRISQUE (無參畫質指標, 越低越清晰): {brisque_score:.2f}")
 except Exception as e:
-    st.error(f"⚠️ Inference failed: {e}")
+    st.warning(f"BRISQUE 計算失敗: {e}")
 
-
-# ========== 下載圖片 ==========
+# ========== Download CAPTCHA ==========
 st.markdown("---")
 with tempfile.TemporaryDirectory() as tmpdir:
     tmp_path = Path(tmpdir) / "captcha.png"

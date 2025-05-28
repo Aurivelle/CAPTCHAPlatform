@@ -1,45 +1,44 @@
-# -*- coding: utf-8 -*-
-"""
-三組示範防禦強度。image_size 與 font_size 保持 7~8 成比例，
-並統一使用 'rotate' 這個 key（對應 perturber.ImagePerturber.rotate）
-"""
-
 PRESETS = {
-    "Baseline": {  # 無任何擾動，用來驗證模型本身
-        "font_size": 28,
-        "image_size": (28, 28),
-        "x_jitter": 0,
-        "y_jitter": 0,
+    # 低難度：純淨圖像、字型佔比約 70%
+    "Baseline": {
+        "font_size": 42,  # 放大字型，適配 60x60
+        "image_size": (60, 60),  # 統一所有 image_size
+        "x_jitter": 1,
+        "y_jitter": 1,
         "wave_amplitude": 0.0,
-        "noise": {},  # 空 dict => 不加噪
+        "noise": {},
     },
+    # 弱防禦：輕度抖動、微量 Gaussian noise + 隨機背景模糊
     "弱防禦": {
-        "font_size": 30,
-        "image_size": (32, 32),
+        "font_size": 44,
+        "image_size": (60, 60),
         "x_jitter": 2,
         "y_jitter": 2,
-        "wave_amplitude": 1.5,
+        "wave_amplitude": 1.0,
         "noise": {
             "gaussian_noise": {"std": 10},
         },
     },
+    # 中等防禦：中度抖動、旋轉、Cutout、彈性扭曲
     "中等防禦": {
-        "font_size": 34,
-        "image_size": (36, 36),
-        "x_jitter": 4,
-        "y_jitter": 4,
-        "wave_amplitude": 3.0,
+        "font_size": 48,
+        "image_size": (60, 60),
+        "x_jitter": 3,
+        "y_jitter": 3,
+        "wave_amplitude": 2.0,
         "noise": {
             "gaussian_noise": {"std": 15},
             "rotate": {"angle_range": (-15, 15)},
+            "cutout": {"num_patches": 2, "max_size": 0.25},
         },
     },
+    # 強防禦：高強度扭曲、強旋轉、色彩亮度對比變化
     "強防禦": {
-        "font_size": 36,
-        "image_size": (40, 40),
-        "x_jitter": 6,
-        "y_jitter": 6,
-        "wave_amplitude": 5.0,
+        "font_size": 52,
+        "image_size": (60, 60),
+        "x_jitter": 5,
+        "y_jitter": 5,
+        "wave_amplitude": 4.0,
         "noise": {
             "gaussian_noise": {"std": 20},
             "rotate": {"angle_range": (-30, 30)},

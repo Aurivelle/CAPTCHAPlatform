@@ -1,127 +1,194 @@
-# train_char_cnn.py
-
 import os
+import random
+import time
+import argparse
+from pathlib import Path
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader, random_split
 from torchvision import transforms
-from char import CharDataset  # 請確保已有 char.py 並在裡面定義了 CharDataset
-
-# ========= 超參數設定 =========
-BATCH_SIZE = 64
-LR = 1e-3
-EPOCHS = 15
-VALID_RATIO = 0.2
-# 根據你在 generate_dataset 時用的字符集調整
-CHARSET = "0123456789abcdefghijklmnopqrstuvwxyz"
+from torchvision.datasets import ImageFolder
+from tqdm import tqdm
 
 
-# ======== 輕量級 CNN 定義 ========
+# ------------------------------------------------------------
+# 模型定義（只留這段在頂層）
+# ------------------------------------------------------------
 class SimpleCNN(nn.Module):
-    def __init__(self, num_classes: int):
+    def __init__(self, cls):
         super().__init__()
         self.features = nn.Sequential(
-            nn.Conv2d(3, 32, 3, padding=1),  # 3→32 channels
+            nn.Conv2d(1, 32, 3, padding=1),
+            nn.BatchNorm2d(32),
             nn.ReLU(),
-            nn.MaxPool2d(2),  # →14×14
             nn.Conv2d(32, 64, 3, padding=1),
+            nn.BatchNorm2d(64),
             nn.ReLU(),
-            nn.MaxPool2d(2),  # →7×7
+            nn.MaxPool2d(2),
+            nn.Conv2d(64, 128, 3, padding=1),
+            nn.BatchNorm2d(128),
+            nn.ReLU(),
+            nn.MaxPool2d(2),
         )
         self.classifier = nn.Sequential(
             nn.Flatten(),
-            nn.Linear(64 * 7 * 7, 128),
+            nn.Dropout(0.3),
+            nn.Linear(128 * 15 * 15, 512),
             nn.ReLU(),
-            nn.Linear(128, num_classes),
+            nn.Dropout(0.3),
+            nn.Linear(512, cls),
         )
 
     def forward(self, x):
         x = self.features(x)
-        x = self.classifier(x)
-        return x
+        return self.classifier(x)
 
 
-def main():
-    # 1) 設備檢測
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print("使用裝置：", device)
+# ------------------------------------------------------------
+# 主程式訓練流程統統移進 __main__ 區塊
+# ------------------------------------------------------------
+if __name__ == "__main__":
+    # CLI 參數
+    parser = argparse.ArgumentParser("CPU-only Char-CNN Trainer")
+    parser.add_argument(
+        "--dataset_dir", default="dataset", help="資料集根目錄 (需含 clean/<label>/)"
+    )
+    parser.add_argument("--epochs", type=int, default=60, help="訓練週期數")
+    parser.add_argument(
+        "--batch_size", type=int, default=32, help="批次大小 (CPU 建議 32~128)"
+    )
+    parser.add_argument("--lr", type=float, default=5e-4, help="初始學習率")
+    parser.add_argument(
+        "--patience", type=int, default=8, help="Early-stopping patience"
+    )
+    parser.add_argument(
+        "--workers", type=int, default=0, help="DataLoader workers (CPU 可設 0)"
+    )
+    parser.add_argument("--seed", type=int, default=42, help="隨機種子")
+    parser.add_argument("--save_path", default="char_cnn.pt", help="最佳模型儲存路徑")
+    args = parser.parse_args()
 
-    # 2) 資料預處理與 Dataset 切分
-    transform = transforms.Compose(
+    # 隨機種子 & 裝置
+    random.seed(args.seed)
+    torch.manual_seed(args.seed)
+    device = torch.device("cpu")  # 強制使用 CPU
+    print(f"使用裝置：{device}\n")
+
+    # 資料檢查：若資料不存在，自動生成 (僅限單字元)
+    if not (Path(args.dataset_dir) / "clean").exists():
+        print("⚠️ 偵測到缺少 dataset/clean，開始自動生成 5000 張圖像 …")
+        from data import generate_dataset, get_font_paths
+
+        cfg = {
+            "length": 1,
+            "charset": "0123456789abcdefghijklmnopqrstuvwxyz",
+            "font_paths": get_font_paths("fonts"),
+            "font_size": 42,
+            "image_size": (60, 60),
+            "bg_color": "white",
+            "char_color": "black",
+            "char_spacing": 4,
+            "seed": args.seed,
+            "x_jitter": 5,
+            "y_jitter": 5,
+            "wave_amplitude": 2.0,
+            "background_blur": True,
+        }
+        generate_dataset(args.dataset_dir, 5000, cfg, noise_config=None)
+
+    # 資料增強
+    transform_train = transforms.Compose(
         [
-            transforms.Resize((28, 28)),  # 縮小加速
+            transforms.Resize((60, 60)),
+            transforms.RandomAffine(degrees=10, translate=(0.1, 0.1), shear=5),
+            transforms.Grayscale(1),
+            transforms.ToTensor(),
+            transforms.RandomErasing(p=0.5, scale=(0.02, 0.2)),
+            transforms.Normalize((0.5,), (0.5,)),
+        ]
+    )
+    transform_valid = transforms.Compose(
+        [
+            transforms.Resize((60, 60)),
+            transforms.Grayscale(1),
             transforms.ToTensor(),
             transforms.Normalize((0.5,), (0.5,)),
         ]
     )
-    full_dataset = CharDataset(root_dir="dataset", transform=transform, charset=CHARSET)
-    n_valid = int(len(full_dataset) * VALID_RATIO)
-    n_train = len(full_dataset) - n_valid
-    train_ds, valid_ds = random_split(full_dataset, [n_train, n_valid])
+
+    # 載入資料集
+    dataset = ImageFolder(root=f"{args.dataset_dir}/clean", transform=transform_train)
+    num_classes = len(dataset.classes)
+    if num_classes == 0:
+        raise RuntimeError("dataset/clean 必須包含至少一個子資料夾 (label)")
+
+    val_size = max(1, int(len(dataset) * 0.2))
+    train_size = len(dataset) - val_size
+    train_ds, val_ds = random_split(dataset, [train_size, val_size])
+    train_ds.dataset.transform = transform_train
+    val_ds.dataset.transform = transform_valid
 
     train_loader = DataLoader(
-        train_ds, batch_size=BATCH_SIZE, shuffle=True, num_workers=2
+        train_ds, batch_size=args.batch_size, shuffle=True, num_workers=args.workers
     )
-    valid_loader = DataLoader(
-        valid_ds, batch_size=BATCH_SIZE, shuffle=False, num_workers=2
+    val_loader = DataLoader(
+        val_ds, batch_size=args.batch_size, shuffle=False, num_workers=args.workers
     )
 
-    # 3) 模型、損失函數、優化器
-    model = SimpleCNN(num_classes=len(CHARSET)).to(device)
-    criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=LR)
+    model = SimpleCNN(num_classes).to(device)
+    criterion = nn.CrossEntropyLoss(label_smoothing=0.1)
+    optimizer = optim.AdamW(model.parameters(), lr=args.lr, weight_decay=1e-4)
+    scheduler = ReduceLROnPlateau(optimizer, mode="max", factor=0.5, patience=2)
 
     best_acc = 0.0
-    best_path = "char_cnn.pt"
-
-    # 4) 訓練 & 驗證迴圈
-    for epoch in range(1, EPOCHS + 1):
-        # --- 訓練階段 ---
+    pat_cnt = 0
+    start_time = time.time()
+    for epoch in range(1, args.epochs + 1):
+        # ---- train ----
         model.train()
-        running_loss, running_correct, running_total = 0.0, 0, 0
-        for imgs, labels in train_loader:
+        train_correct = train_total = 0
+        for imgs, labels in tqdm(
+            train_loader, desc=f"Epoch {epoch}/{args.epochs} [train]", leave=False
+        ):
             imgs, labels = imgs.to(device), labels.to(device)
             optimizer.zero_grad()
             outputs = model(imgs)
             loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
+            train_correct += (outputs.argmax(1) == labels).sum().item()
+            train_total += labels.size(0)
+        train_acc = train_correct / train_total
 
-            running_loss += loss.item() * labels.size(0)
-            preds = outputs.argmax(dim=1)
-            running_correct += (preds == labels).sum().item()
-            running_total += labels.size(0)
-
-        train_loss = running_loss / running_total
-        train_acc = running_correct / running_total
-
-        # --- 驗證階段 ---
+        # ---- valid ----
         model.eval()
-        val_correct, val_total = 0, 0
+        val_correct = val_total = 0
         with torch.no_grad():
-            for imgs, labels in valid_loader:
+            for imgs, labels in val_loader:
                 imgs, labels = imgs.to(device), labels.to(device)
                 outputs = model(imgs)
-                preds = outputs.argmax(dim=1)
-                val_correct += (preds == labels).sum().item()
+                val_correct += (outputs.argmax(1) == labels).sum().item()
                 val_total += labels.size(0)
-
         val_acc = val_correct / val_total
+        scheduler.step(val_acc)
 
         print(
-            f"Epoch {epoch}/{EPOCHS} | "
-            f"Train loss={train_loss:.4f}, acc={train_acc:.4f} | "
-            f"Valid acc={val_acc:.4f}"
+            f"Epoch {epoch:2d}/{args.epochs} | train_acc={train_acc:.4f} | valid_acc={val_acc:.4f}"
         )
 
-        # 保存最佳模型
+        # ---- checkpoint & early stop ----
         if val_acc > best_acc:
             best_acc = val_acc
-            torch.save(model.state_dict(), best_path)
+            torch.save(model.state_dict(), args.save_path)
+            pat_cnt = 0
+        else:
+            pat_cnt += 1
+            if pat_cnt >= args.patience:
+                print("Early stopping triggered.")
+                break
 
-    print(f"\n最佳驗證準確率：{best_acc:.4f}，模型已保存至 {best_path}")
-
-
-if __name__ == "__main__":
-    main()
+    print(f"\n訓練結束，最佳驗證準確率 {best_acc:.4f}，模型已存至 {args.save_path}")
+    print(f"總耗時：{(time.time() - start_time)/60:.1f} 分鐘")
