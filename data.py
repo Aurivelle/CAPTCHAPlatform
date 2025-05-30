@@ -67,7 +67,7 @@ def generate_dataset(
     output_path = Path(output_dir)
     clean_root = output_path / "clean"
     clean_root.mkdir(parents=True, exist_ok=True)
-    # 重新建立 clean 子資料夾結構
+
     for ch in dataset_config["charset"]:
         (clean_root / ch).mkdir(exist_ok=True)
     label_path = output_path / "labels.txt"
@@ -93,13 +93,11 @@ def generate_dataset(
             if dataset_config.get("background_blur", False):
                 img = img.filter(ImageFilter.GaussianBlur(radius=random.uniform(0, 1)))
 
-            # 儲存到 clean/<label>/
             label_dir = clean_root / text
             filename = f"{i:06d}.png"
             img.save(label_dir / filename)
             f.write(f"clean/{text}/{filename} {text}\n")
 
-            # 靜態噪聲版本
             if noise_config:
                 for noise_name, params in noise_config.items():
                     noise_dir = output_path / noise_name / text
@@ -127,9 +125,17 @@ if __name__ == "__main__":
         "background_blur": True,
     }
     noise_cfg = {
-        "gaussian_noise": {"std": 10},
-        "cutout": {"num_patches": 1, "max_size": 0.2},
+        "gaussian_noise": {"mean": 0, "std": 10},
+        "laplace_noise": {"loc": 0, "scale": 10},
+        "salt_pepper_noise": {"amount": 0.02, "s_vs_p": 0.5},
+        "speckle_noise": {"std": 0.1},
         "rotate": {"angle_range": (-10, 10)},
+        "affine_transform": {"max_shift": 0.08},
+        "cutout": {"num_patches": 1, "max_size": 0.2},
+        "occlusion_mask": {"num_shapes": 1, "max_size": 0.2},
+        "brightness": {"factor_range": (0.7, 1.3)},
+        "contrast": {"factor_range": (0.7, 1.3)},
+        "jpeg_compression": {"quality_range": (40, 80)},
     }
     generate_dataset(
         "dataset", n_samples=5000, dataset_config=dataset_cfg, noise_config=noise_cfg

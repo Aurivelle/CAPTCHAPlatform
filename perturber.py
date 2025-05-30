@@ -3,25 +3,11 @@ from PIL import Image, ImageEnhance, ImageDraw
 
 
 class ImagePerturber:
-    """
-    Noise, Distortions, and Color Augmentation for Images
-    Example Usage :
-        perturber = ImagePerturber(seed=42)
-        cfg = {
-            "gaussian_noise": {"std":15},
-            "rotation": {"angle_range":(-15,15)},
-            "cutout": {"num_patches":2, "max_size":0.2},
-            "brightness": {"factor_range":(0.8,1.2)}
-        }
-        out = perturber.apply(img, cfg)
-    """
-
     def __init__(self, seed: int = None):
         if seed is not None:
             np.random.seed(seed)
         self.seed = seed
 
-    # ===== Low-level noise =====
     def gaussian_noise(
         self, img: Image.Image, mean: float = 0, std: float = 25
     ) -> Image.Image:
@@ -43,11 +29,11 @@ class ImagePerturber:
     ) -> Image.Image:
         arr = np.array(img)
         out = arr.copy()
-        # salt
+
         num_salt = np.ceil(amount * arr.size * s_vs_p)
         coords = [np.random.randint(0, i - 1, int(num_salt)) for i in arr.shape]
         out[tuple(coords)] = 255
-        # pepper
+
         num_pepper = np.ceil(amount * arr.size * (1.0 - s_vs_p))
         coords = [np.random.randint(0, i - 1, int(num_pepper)) for i in arr.shape]
         out[tuple(coords)] = 0
@@ -59,14 +45,13 @@ class ImagePerturber:
         out = np.clip(arr + arr * noise, 0, 1) * 255
         return Image.fromarray(out.astype(np.uint8))
 
-    # ===== Geometric distortions =====
     def rotate(self, img: Image.Image, angle_range: tuple = (-15, 15)) -> Image.Image:
         angle = np.random.uniform(angle_range[0], angle_range[1])
         return img.rotate(angle, resample=Image.BILINEAR, expand=False)
 
     def affine_transform(self, img: Image.Image, max_shift: float = 0.1) -> Image.Image:
         w, h = img.size
-        # random shifting
+
         dx = np.random.uniform(-max_shift, max_shift) * w
         dy = np.random.uniform(-max_shift, max_shift) * h
         coeffs = (1, 0, dx, 0, 1, dy)
@@ -103,7 +88,6 @@ class ImagePerturber:
             draw.rectangle(shape, fill=(0))
         return out
 
-    # ===== Color & style perturbation =====
     def brightness(
         self, img: Image.Image, factor_range: tuple = (0.8, 1.2)
     ) -> Image.Image:
@@ -127,17 +111,7 @@ class ImagePerturber:
         buf.seek(0)
         return Image.open(buf).copy()
 
-    # ===== Apply =====
     def apply(self, img: Image.Image, config: dict) -> Image.Image:
-        """
-        config 範例:
-        {
-            "gaussian_noise": {"std":15},
-            "rotation": {"angle_range":(-15,15)},
-            "cutout": {"num_patches":2, "max_size":0.2},
-            "brightness": {"factor_range":(0.9,1.1)}
-        }
-        """
         if config is None or len(config) == 0:
             return img.copy()
         out = img.copy()

@@ -14,9 +14,6 @@ from torchvision.datasets import ImageFolder
 from tqdm import tqdm
 
 
-# ------------------------------------------------------------
-# 模型定義（只留這段在頂層）
-# ------------------------------------------------------------
 class SimpleCNN(nn.Module):
     def __init__(self, cls):
         super().__init__()
@@ -47,11 +44,8 @@ class SimpleCNN(nn.Module):
         return self.classifier(x)
 
 
-# ------------------------------------------------------------
-# 主程式訓練流程統統移進 __main__ 區塊
-# ------------------------------------------------------------
 if __name__ == "__main__":
-    # CLI 參數
+
     parser = argparse.ArgumentParser("CPU-only Char-CNN Trainer")
     parser.add_argument(
         "--dataset_dir", default="dataset", help="資料集根目錄 (需含 clean/<label>/)"
@@ -71,13 +65,11 @@ if __name__ == "__main__":
     parser.add_argument("--save_path", default="char_cnn.pt", help="最佳模型儲存路徑")
     args = parser.parse_args()
 
-    # 隨機種子 & 裝置
     random.seed(args.seed)
     torch.manual_seed(args.seed)
-    device = torch.device("cpu")  # 強制使用 CPU
+    device = torch.device("cpu")
     print(f"使用裝置：{device}\n")
 
-    # 資料檢查：若資料不存在，自動生成 (僅限單字元)
     if not (Path(args.dataset_dir) / "clean").exists():
         print("⚠️ 偵測到缺少 dataset/clean，開始自動生成 5000 張圖像 …")
         from data import generate_dataset, get_font_paths
@@ -99,7 +91,6 @@ if __name__ == "__main__":
         }
         generate_dataset(args.dataset_dir, 5000, cfg, noise_config=None)
 
-    # 資料增強
     transform_train = transforms.Compose(
         [
             transforms.Resize((60, 60)),
@@ -119,7 +110,6 @@ if __name__ == "__main__":
         ]
     )
 
-    # 載入資料集
     dataset = ImageFolder(root=f"{args.dataset_dir}/clean", transform=transform_train)
     num_classes = len(dataset.classes)
     if num_classes == 0:
@@ -147,7 +137,7 @@ if __name__ == "__main__":
     pat_cnt = 0
     start_time = time.time()
     for epoch in range(1, args.epochs + 1):
-        # ---- train ----
+
         model.train()
         train_correct = train_total = 0
         for imgs, labels in tqdm(
@@ -163,7 +153,6 @@ if __name__ == "__main__":
             train_total += labels.size(0)
         train_acc = train_correct / train_total
 
-        # ---- valid ----
         model.eval()
         val_correct = val_total = 0
         with torch.no_grad():
@@ -179,7 +168,6 @@ if __name__ == "__main__":
             f"Epoch {epoch:2d}/{args.epochs} | train_acc={train_acc:.4f} | valid_acc={val_acc:.4f}"
         )
 
-        # ---- checkpoint & early stop ----
         if val_acc > best_acc:
             best_acc = val_acc
             torch.save(model.state_dict(), args.save_path)

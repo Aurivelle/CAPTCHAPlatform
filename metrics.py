@@ -6,20 +6,12 @@ import matplotlib.pyplot as plt
 
 
 def compute_accuracy(preds: List[str], labels: List[str]) -> float:
-    """
-    計算整串 CAPTCHA 完全正確率 (全字對)
-    preds, labels: 長度相同的 list
-    返回 0~1 之間的正確率
-    """
     assert len(preds) == len(labels), "Preds and labels must have same length"
     correct = sum(p == l for p, l in zip(preds, labels))
     return correct / len(labels) if labels else 0.0
 
 
 def _edit_distance(s1: str, s2: str) -> int:
-    """
-    計算兩個字串的 Levenshtein 編輯距離
-    """
     if len(s1) < len(s2):
         return _edit_distance(s2, s1)
     # now len(s1) >= len(s2)
@@ -36,9 +28,6 @@ def _edit_distance(s1: str, s2: str) -> int:
 
 
 def compute_CER(preds: List[str], labels: List[str]) -> float:
-    """
-    計算 Character Error Rate (CER): 編輯距離總和 / 總字符數
-    """
     total_edits = 0
     total_chars = 0
     for p, l in zip(preds, labels):
@@ -47,17 +36,17 @@ def compute_CER(preds: List[str], labels: List[str]) -> float:
     return total_edits / total_chars if total_chars > 0 else 0.0
 
 
+def compute_similarity(preds: List[str], labels: List[str]) -> float:
+    sims = []
+    for p, l in zip(preds, labels):
+        d = _edit_distance(p, l)
+        sims.append(1 - d / max(1, len(l)))
+    return sum(sims) / len(sims)
+
+
 def evaluate_folder(
     predict_fn: Callable[[Image.Image], str], img_dir: str, label_path: str
 ) -> Dict[str, float]:
-    """
-    對單一資料夾評估模型表現，計算 accuracy, CER, 平均 BRISQUE (若可)
-    predict_fn: 接收 PIL.Image, 返回預測字串
-    img_dir: 圖片資料夾路徑
-    label_path: 標註檔路徑 (filename label)
-    返回 dict: {'accuracy':..., 'cer':..., 'avg_brisque':...}
-    """
-    # 讀取 label
     labels = {}
     with open(label_path, "r", encoding="utf-8") as f:
         for line in f:
@@ -66,7 +55,6 @@ def evaluate_folder(
 
     preds = []
     gts = []
-    brisque_scores = []
 
     for fn, gt in labels.items():
         path = os.path.join(img_dir, fn)
@@ -76,15 +64,11 @@ def evaluate_folder(
         pred = predict_fn(img)
         preds.append(pred)
         gts.append(gt)
-        if _HAS_BRISQUE:
-            score = compute_brisque_score(img)
-            brisque_scores.append(score)
 
     acc = compute_accuracy(preds, gts)
     cer = compute_CER(preds, gts)
+    # 不再計算 brisque_scores
     result = {"accuracy": acc, "cer": cer}
-    if brisque_scores:
-        result["avg_brisque"] = float(np.mean(brisque_scores))
     return result
 
 

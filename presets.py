@@ -47,4 +47,25 @@ PRESETS = {
             "contrast": {"factor_range": (0.7, 1.3)},
         },
     },
+    # 全方位極限防禦：整合所有perturber.py支援的干擾
+    "全方位極限防禦": {
+        "font_size": 56,
+        "image_size": (60, 60),
+        "x_jitter": 7,
+        "y_jitter": 7,
+        "wave_amplitude": 5.0,
+        "noise": {
+            "gaussian_noise": {"mean": 0, "std": 25},
+            "laplace_noise": {"loc": 0, "scale": 15},
+            "salt_pepper_noise": {"amount": 0.04, "s_vs_p": 0.5},
+            "speckle_noise": {"std": 0.15},
+            "rotate": {"angle_range": (-40, 40)},
+            "affine_transform": {"max_shift": 0.12},
+            "cutout": {"num_patches": 4, "max_size": 0.35},
+            "occlusion_mask": {"num_shapes": 2, "max_size": 0.25},
+            "brightness": {"factor_range": (0.5, 1.5)},
+            "contrast": {"factor_range": (0.5, 1.5)},
+            "jpeg_compression": {"quality_range": (20, 50)},
+        },
+    },
 }
