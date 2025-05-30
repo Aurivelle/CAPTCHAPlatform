@@ -35,6 +35,20 @@ def load_charcnn(model_path: str = "char_cnn.pt", num_classes: int = 36):
 
 CHARSET = list(string.ascii_lowercase + string.digits)
 char_cnn = load_charcnn(num_classes=len(CHARSET))
+from torchvision import models
+
+
+@st.cache_resource
+def load_vgg16(model_path: str = "vgg16_char_best.pt", num_classes: int = 36):
+    device = torch.device("cpu")
+    model = models.vgg16(pretrained=False)
+    model.classifier[6] = nn.Linear(4096, num_classes)
+    model.load_state_dict(torch.load(model_path, map_location=device))
+    model.to(device).eval()
+    return model
+
+
+vgg16 = load_vgg16(num_classes=len(CHARSET))
 
 # ========= Transforms & Predict Functions ==========
 cnn_transform = transforms.Compose(
@@ -45,6 +59,23 @@ cnn_transform = transforms.Compose(
         transforms.Normalize((0.5,), (0.5,)),
     ]
 )
+
+vgg_transform = transforms.Compose(
+    [
+        transforms.Resize((224, 224)),
+        transforms.Grayscale(num_output_channels=3),
+        transforms.ToTensor(),
+        transforms.Normalize([0.5] * 3, [0.5] * 3),
+    ]
+)
+
+
+def vgg16_predict(img: Image.Image) -> str:
+    x = vgg_transform(img).unsqueeze(0)
+    with torch.no_grad():
+        out = vgg16(x)
+    idx = out.argmax(1).item()
+    return CHARSET[idx]
 
 
 def charcnn_predict(img: Image.Image) -> str:
@@ -235,7 +266,7 @@ except Exception as e:
 st.markdown("---")
 st.header("Model Inference Results")
 
-d1, d2 = st.columns(2)
+d1, d2, d3 = st.columns(3)
 with d1:
     try:
         pred_char = charcnn_predict(noisy_img)
@@ -244,30 +275,40 @@ with d1:
         st.error(f"Char-CNN inference failed: {e}")
 with d2:
     try:
+        pred_vgg = vgg16_predict(noisy_img)
+        st.info(f"🔬 VGG16 predicts: **{pred_vgg}**")
+    except Exception as e:
+        st.error(f"VGG16 inference failed: {e}")
+with d3:
+    try:
         pred_ocr, ocr_conf = ocr_predict_with_conf(noisy_img)
         st.info(f"📝 OCR predicts: **{pred_ocr}** (confidence: {ocr_conf:.1f})")
     except Exception as e:
         st.error(f"OCR inference failed: {e}")
 
 # Ground truth and success indicator
-if "pred_char" in locals() and "pred_ocr" in locals():
+if "pred_char" in locals() and "pred_ocr" in locals() and "pred_vgg" in locals():
     st.subheader("CAPTCHA 預測結果對比")
-
     st.write(f"Ground Truth: **{text}**")
     st.markdown(
         f"Char-CNN Output: {highlight_diff(pred_char, text)}", unsafe_allow_html=True
+    )
+    st.markdown(
+        f"VGG16 Output: {highlight_diff(pred_vgg, text)}", unsafe_allow_html=True
     )
     st.markdown(
         f"Tesseract Output: {highlight_diff(pred_ocr, text)}", unsafe_allow_html=True
     )
 from metrics import compute_similarity
 
-if "pred_char" in locals() and "pred_ocr" in locals():
+if "pred_char" in locals() and "pred_ocr" in locals() and "pred_vgg" in locals():
     st.subheader("CAPTCHA 預測相似度指標")
     cnn_sim = compute_similarity([pred_char], [text])
+    vgg_sim = compute_similarity([pred_vgg], [text])
     ocr_sim = compute_similarity([pred_ocr], [text])
 
     st.write(f"Char-CNN  | Normalized Similarity: **{cnn_sim:.3f}**")
+    st.write(f"VGG16     | Normalized Similarity: **{vgg_sim:.3f}**")
     st.write(f"Tesseract | Normalized Similarity: **{ocr_sim:.3f}**")
 # ========== Download CAPTCHA ==========
 st.markdown("---")
@@ -314,8 +355,9 @@ if st.button("開始批次評測"):
                 f.write(label_txt.strip())
             # 3. 呼叫 evaluate_folder
             res_cnn = evaluate_folder(charcnn_predict, tmpdir, lbl_path)
+            res_vgg = evaluate_folder(vgg16_predict, tmpdir, lbl_path)
             res_ocr = evaluate_folder(ocr_predict, tmpdir, lbl_path)
-            # 4. 顯示結果
             st.subheader("批次評測結果")
             st.write("🖥️ Char-CNN：", res_cnn)
+            st.write("🔬 VGG16：", res_vgg)
             st.write("📝 Tesseract OCR：", res_ocr)

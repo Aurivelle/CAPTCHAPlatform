@@ -15,7 +15,7 @@
 #### presets.py
 - 算是一些參數，可以生產資料給下面的程式拿來測試train完的CNN Model的能力。
 **Note** : 也是train起來表現不錯的論據之一。
-#### evaluate_presets.py
+#### evaluate.py
 - 生產一些數據並拿來測試，算是Inference環節。
 - 結果會是0.8, 0.9左右，同時會跟OCR做比較，而有比OCR高的成果。
 #### metrics.py
@@ -28,12 +28,9 @@
 - Tesseract OCR 模型推論
 - 評估指標 (Accuracy、CER)
 - 即時展示與下載功能
----
-### 忘記有沒有用到 但是應該可以用到 但是或許會跟上述模組有些微不搭的程式們(比較久沒動)
-**Note** : 使用前要微調 主要應該都是實驗用 跟前端關係比較小。
-#### train_VGG.py
-- 顧名思義，訓練另一種模型。
-**Note** : VGG-based的模型其實應該是有料的，但是我那時候選了cifar-100，跟我們的主題不太搭，我希望這幾天有時間可以微調他讓他符合我們的主題。
+#### VGG.ipynb
+- VGG是一種更強的訓練模型，但由於DataSet都是單字元所以有點尷尬。
+- 字串的評分就交給OCR撐吧。
 ---
 ### 我的資料夾有但是Github上沒有的東西
 **Note** : 原因是因為檔案太大了實在是push不上去QQ
@@ -41,8 +38,10 @@
     - 我電腦上抓的不同字型
     - 如果需要可以傳，但我想每個人的電腦上應該都有?主要是```.ttf```檔案。
 - char_cnn.pt(也就是訓練好的模型)
-- 剩下還有一些套件的東西我還在研究，目前很卡的是BRISQUE
-- 如果按照```requirements.txt```跟```git pull```下來應該是能跑動大部分(吧)，如果要訓練好的模型，重新跑一次```torch_char_cnn.py```，應該不會差太多。
+  - 跑一次torch_char_cnn.py就可以用了
+- vgg16_char_best.pt(也是訓練好的模型)
+  - 跑一次VGG.ipynb就可以用了
+- app.py 請用 ```python -m streamlit run app.py```
 ---
 ### 預想上的整體報告架構
 - 基礎介紹
