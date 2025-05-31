@@ -19,8 +19,8 @@ from torchvision import transforms
 from torch_char_cnn import SimpleCNN
 
 # ========== Streamlit App Configuration ==========
-st.set_page_config(page_title="CAPTCHA Demo with Char-CNN & OCR", layout="centered")
-st.title("🛡️ CAPTCHA Generator & Inference Demo")
+st.set_page_config(page_title="CAPTCHA Demo Page", layout="centered")
+st.title("Customizable CAPTCHA Generation System")
 
 
 # ========== Load Char-CNN Model ==========
@@ -262,54 +262,74 @@ except Exception as e:
     st.warning(f"SSIM/PSNR 計算失敗: {e}")
 
 
-# ========== Inference Results ==========
 st.markdown("---")
 st.header("Model Inference Results")
 
-d1, d2, d3 = st.columns(3)
-with d1:
-    try:
-        pred_char = charcnn_predict(noisy_img)
-        st.success(f"🖥️ Char-CNN predicts: **{pred_char}**")
-    except Exception as e:
-        st.error(f"Char-CNN inference failed: {e}")
-with d2:
-    try:
-        pred_vgg = vgg16_predict(noisy_img)
-        st.info(f"🔬 VGG16 predicts: **{pred_vgg}**")
-    except Exception as e:
-        st.error(f"VGG16 inference failed: {e}")
-with d3:
+if len(text) == 1:
+    # 三個 baseline
+    d1, d2, d3 = st.columns(3)
+    with d1:
+        try:
+            pred_char = charcnn_predict(noisy_img)
+            st.success(f"🖥️ Char-CNN predicts: **{pred_char}**")
+        except Exception as e:
+            st.error(f"Char-CNN inference failed: {e}")
+    with d2:
+        try:
+            pred_vgg = vgg16_predict(noisy_img)
+            st.info(f"🔬 VGG16 predicts: **{pred_vgg}**")
+        except Exception as e:
+            st.error(f"VGG16 inference failed: {e}")
+    with d3:
+        try:
+            pred_ocr, ocr_conf = ocr_predict_with_conf(noisy_img)
+            st.info(f"📝 OCR predicts: **{pred_ocr}** (confidence: {ocr_conf:.1f})")
+        except Exception as e:
+            st.error(f"OCR inference failed: {e}")
+
+    # Ground truth & 比對
+    if "pred_char" in locals() and "pred_ocr" in locals() and "pred_vgg" in locals():
+        st.subheader("CAPTCHA 預測結果對比")
+        st.write(f"Ground Truth: **{text}**")
+        st.markdown(
+            f"Char-CNN Output: {highlight_diff(pred_char, text)}",
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            f"VGG16 Output: {highlight_diff(pred_vgg, text)}", unsafe_allow_html=True
+        )
+        st.markdown(
+            f"Tesseract Output: {highlight_diff(pred_ocr, text)}",
+            unsafe_allow_html=True,
+        )
+    from metrics import compute_similarity
+
+    if "pred_char" in locals() and "pred_ocr" in locals() and "pred_vgg" in locals():
+        st.subheader("CAPTCHA 預測相似度指標")
+        cnn_sim = compute_similarity([pred_char], [text])
+        vgg_sim = compute_similarity([pred_vgg], [text])
+        ocr_sim = compute_similarity([pred_ocr], [text])
+        st.write(f"Char-CNN  | Normalized Similarity: **{cnn_sim:.3f}**")
+        st.write(f"VGG16     | Normalized Similarity: **{vgg_sim:.3f}**")
+        st.write(f"Tesseract | Normalized Similarity: **{ocr_sim:.3f}**")
+else:
+    # 只顯示 Tesseract
     try:
         pred_ocr, ocr_conf = ocr_predict_with_conf(noisy_img)
         st.info(f"📝 OCR predicts: **{pred_ocr}** (confidence: {ocr_conf:.1f})")
     except Exception as e:
         st.error(f"OCR inference failed: {e}")
 
-# Ground truth and success indicator
-if "pred_char" in locals() and "pred_ocr" in locals() and "pred_vgg" in locals():
-    st.subheader("CAPTCHA 預測結果對比")
+    st.subheader("Ground Truth")
     st.write(f"Ground Truth: **{text}**")
-    st.markdown(
-        f"Char-CNN Output: {highlight_diff(pred_char, text)}", unsafe_allow_html=True
-    )
-    st.markdown(
-        f"VGG16 Output: {highlight_diff(pred_vgg, text)}", unsafe_allow_html=True
-    )
     st.markdown(
         f"Tesseract Output: {highlight_diff(pred_ocr, text)}", unsafe_allow_html=True
     )
-from metrics import compute_similarity
+    from metrics import compute_similarity
 
-if "pred_char" in locals() and "pred_ocr" in locals() and "pred_vgg" in locals():
-    st.subheader("CAPTCHA 預測相似度指標")
-    cnn_sim = compute_similarity([pred_char], [text])
-    vgg_sim = compute_similarity([pred_vgg], [text])
     ocr_sim = compute_similarity([pred_ocr], [text])
-
-    st.write(f"Char-CNN  | Normalized Similarity: **{cnn_sim:.3f}**")
-    st.write(f"VGG16     | Normalized Similarity: **{vgg_sim:.3f}**")
     st.write(f"Tesseract | Normalized Similarity: **{ocr_sim:.3f}**")
+
 # ========== Download CAPTCHA ==========
 st.markdown("---")
 with tempfile.TemporaryDirectory() as tmpdir:
@@ -334,16 +354,50 @@ uploaded_files = st.file_uploader(
     type=["png", "jpg", "jpeg"],
     accept_multiple_files=True,
 )
+
+# ====== 格式說明與範例 ======
+st.markdown(
+    """
+**labels.txt 格式說明：**
+- 每一行請輸入：`filename label`
+- 例如：
+    ```
+    00001.png a
+    00002.png g
+    00003.png 8
+    ```
+- **檔名與標註以「空格」分隔。**
+- 標註可為單字元（如 `a`），也可為多字元（如 `asdf`），但僅**全為單字元**時才同時評測 CNN/VGG baseline。
+"""
+)
+
+# ====== 輸入框，含預設內容 ======
 label_txt = st.text_area(
     "貼上 labels.txt 內容，每行 `filename label`",
     height=150,
+    value="00001.png a\n00002.png b\n00003.png c",
 )
+
+# ====== 即時格式檢查 ======
+if label_txt.strip():
+    label_lines = [line for line in label_txt.strip().splitlines() if line.strip()]
+    format_errors = []
+    for idx, line in enumerate(label_lines):
+        parts = line.strip().split()
+        if len(parts) != 2:
+            format_errors.append(idx + 1)
+    if format_errors:
+        st.warning(
+            f"❗ 第 {format_errors} 行格式錯誤，應為：filename + 空格 + label（如 `00001.png a`）。"
+        )
 
 if st.button("開始批次評測"):
     if not uploaded_files:
         st.error("請先上傳檔案！")
     elif not label_txt.strip():
         st.error("請貼上 labels.txt 內容！")
+    elif format_errors:
+        st.error(f"labels.txt 有格式錯誤（第 {format_errors} 行），請修正後再提交！")
     else:
         with tempfile.TemporaryDirectory() as tmpdir:
             # 1. 儲存圖片
@@ -353,11 +407,21 @@ if st.button("開始批次評測"):
             lbl_path = os.path.join(tmpdir, "labels.txt")
             with open(lbl_path, "w", encoding="utf-8") as f:
                 f.write(label_txt.strip())
-            # 3. 呼叫 evaluate_folder
-            res_cnn = evaluate_folder(charcnn_predict, tmpdir, lbl_path)
-            res_vgg = evaluate_folder(vgg16_predict, tmpdir, lbl_path)
-            res_ocr = evaluate_folder(ocr_predict, tmpdir, lbl_path)
-            st.subheader("批次評測結果")
-            st.write("🖥️ Char-CNN：", res_cnn)
-            st.write("🔬 VGG16：", res_vgg)
-            st.write("📝 Tesseract OCR：", res_ocr)
+            # 3. 解析 labels 長度，判斷是否為單字元
+            with open(lbl_path, "r", encoding="utf-8") as f:
+                all_labels = [line.strip().split()[1] for line in f if line.strip()]
+            single_char_mode = all(len(lbl) == 1 for lbl in all_labels)
+
+            # 4. 呼叫 evaluate_folder
+            if single_char_mode:
+                res_cnn = evaluate_folder(charcnn_predict, tmpdir, lbl_path)
+                res_vgg = evaluate_folder(vgg16_predict, tmpdir, lbl_path)
+                res_ocr = evaluate_folder(ocr_predict, tmpdir, lbl_path)
+                st.subheader("批次評測結果")
+                st.write("🖥️ Char-CNN：", res_cnn)
+                st.write("🔬 VGG16：", res_vgg)
+                st.write("📝 Tesseract OCR：", res_ocr)
+            else:
+                res_ocr = evaluate_folder(ocr_predict, tmpdir, lbl_path)
+                st.subheader("批次評測結果")
+                st.write("📝 Tesseract OCR：", res_ocr)
