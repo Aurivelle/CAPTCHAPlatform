@@ -134,32 +134,7 @@
 \def\@seccntformat#1{\csname the#1\endcsname}
 \def\@biblabel#1{\textcolor{lipicsGray}{\sffamily\bfseries#1}}
 \def\EventLogoHeight{25}
-\def\copyrightline{%
-  \ifx\@hideLIPIcs\@undefined
-    \ifx\@EventLogo\@empty
-    \else
-      \setbox\@tempboxa\hbox{\includegraphics[height=\EventLogoHeight\p@]{\@EventLogo}}%
-      \rlap{\hspace\textwidth\hspace{-\wd\@tempboxa}\hspace{\z@}%
-            \vtop to\z@{\vskip-0mm\unhbox\@tempboxa\vss}}%
-    \fi
-    \scriptsize
-    \vtop{\hsize\textwidth
-      \nobreakspace\par
-      \@Copyright
-      \ifx\@EventLongTitle\@empty\else\@EventLongTitle.\\\fi
-      \ifx\@EventEditors\@empty\else
-        \@Eds: \@EventEditors
-        ; Article~No.\,\@ArticleNo; pp.\,\@ArticleNo:\thepage--\@ArticleNo:\number\numexpr\getpagerefnumber{TotPages}%
-        \\
-      \fi
-      \setbox\@tempboxa\hbox{\IfFileExists{lipics-logo-bw.pdf}{\includegraphics[height=14\p@,trim=0 15 0 0]{lipics-logo-bw}}{\includegraphics[height=14\p@, width=62pt]{example-image-plain}}}%
-      \hspace*{\wd\@tempboxa}\enskip
-      \href{https://www.dagstuhl.de/lipics/}%
-           {Leibniz International Proceedings in Informatics}\\
-      \smash{\unhbox\@tempboxa}\enskip
-      \href{https://www.dagstuhl.de}%
-           {Schloss Dagstuhl -- Leibniz-Zentrum f{\"u}r Informatik, Dagstuhl Publishing, Germany}}%
-  \fi}
+
 \def\ps@plain{\let\@mkboth\@gobbletwo
   \let\@oddhead\@empty
   \let\@evenhead\@empty
@@ -326,11 +301,11 @@
   \@authorrunning
   %%\let \footnote \thanks
   \parindent\z@ \raggedright
-  \if!\@title!\def\@title{\textcolor{red}{Author: Please fill in a title}}\fi
+  \if!\@title!\def\@title{\textcolor{red}{}}\fi
     {\LARGE\sffamily\bfseries\mathversion{bold}\@title \if!\@subtitle!\else{\\\Large\sffamily\bfseries\mathversion{bold}\@subtitle}\fi \par}%
     \vskip 1em
     \ifx\@author\orig@author
-      \textcolor{red}{Author: Please provide author information}%
+      \textcolor{red}{}%
     \else
       {\def\thefootnote{\@arabic\c@footnote}%
        \setcounter{footnote}{0}%
@@ -427,42 +402,37 @@
   {\vskip\topmattervskip\baselineskip\noindent
    \subjclassHeading
    \ifx\@ccsdescString\@empty
-     \textcolor{red}{Author: Please fill in 1 or more \string\ccsdesc\space macro}%
+     \textcolor{red}{}%
    \else
      \@ccsdescString
    \fi
    \vskip\topmattervskip\baselineskip
    \noindent\keywordsHeading
    \ifx\@keywords\@empty
-     \textcolor{red}{Author: Please fill in \string\keywords\space macro}%
+     \textcolor{red}{}%
    \else
      \@keywords
    \fi
-   \ifx\@hideLIPIcs\@undefined
-     \ifx\@DOIPrefix\@empty\else
-       \vskip\topmattervskip\baselineskip\noindent
-       \doiHeading\href{https://doi.org/\@lipicsdoi}{\@lipicsdoi}%
-     \fi
-   \fi
+   
    \ifx\@category\@empty\else
      \vskip\topmattervskip\baselineskip\noindent
      \categoryHeading\@category
    \fi
    \ifx\@relatedversion\@empty\else
      \vskip\topmattervskip\baselineskip\noindent
-     \relatedversionHeading\ifx\authoranonymous\relax\textcolor{red}{Anonymous related version(s)}\else\@relatedversion\fi
+     \relatedversionHeading\ifx\authoranonymous\relax\textcolor{red}{}\else\@relatedversion\fi
    \fi
    \ifx\@supplement\@empty\else
      \vskip\topmattervskip\baselineskip\noindent
-     \supplementHeading\ifx\authoranonymous\relax\textcolor{red}{Anonymous supplementary material}\else\@supplement\fi
+     \supplementHeading\ifx\authoranonymous\relax\textcolor{red}{}\else\@supplement\fi
    \fi
    \ifx\@funding\@empty\else
      \vskip\topmattervskip\baselineskip\noindent
-     \fundingHeading\ifx\authoranonymous\relax\textcolor{red}{Anonymous funding}\else\@funding\fi
+     \fundingHeading\ifx\authoranonymous\relax\textcolor{red}{}\else\@funding\fi
    \fi
    \ifx\@acknowledgements\@empty\else
      \vskip\topmattervskip\baselineskip\noindent
-     \acknowledgementsHeading\ifx\authoranonymous\relax\textcolor{red}{Anonymous acknowledgements} \else\@acknowledgements\fi
+     \acknowledgementsHeading\ifx\authoranonymous\relax\textcolor{red}{} \else\@acknowledgements\fi
    \fi
 	\protected@write\@auxout{}{\string\gdef\string\@pageNumberEndAbstract{\thepage}}%
 	}% end abstract
@@ -676,7 +646,6 @@ pdflicenseurl={https://creativecommons.org/licenses/by/4.0/},
 pdfpubtype={LIPIcs},
 pdfvolumenum={\@SeriesVolume},
 pdfpagerange={\@ArticleNo:\thepage-\@ArticleNo:\theTotPages},
-pdfdoi={\@lipicsdoi},
 pdfapart=3,
 pdfaconformance=B
 }
@@ -727,9 +696,9 @@ pdfsubject={LIPIcs, Vol.\@SeriesVolume, \@EventShortTitle; Copyright (C) \ifx\au
 \RequirePackage{subcaption}
 \def\titlerunning#1{\gdef\@titlerunning{{\let\footnote\@gobble\markboth{#1}{#1}}}}
 \def\authorrunning#1{%
-  \gdef\@authorrunning{\markright{\ifx\authoranonymous\relax\textcolor{red}{Anonymous author(s)} \else\if!#1!\textcolor{red}{Author: Please fill in the \string\authorrunning\space macro}\else#1\fi\fi}}}
+  \gdef\@authorrunning{\markright{\ifx\authoranonymous\relax\textcolor{red}{} \else\if!#1!\textcolor{red}{}\else#1\fi\fi}}}
 \titlerunning{\@title \if!\@subtitle!\else\subtitleseperator \@subtitle\fi}
-\authorrunning{\textcolor{red}{Author: Please use the \string\authorrunning\space macro}}
+\authorrunning{\textcolor{red}{}}
 \def\EventLongTitle#1{\gdef\@EventLongTitle{#1}}
 \EventLongTitle{}
 \def\EventShortTitle#1{\gdef\@EventShortTitle{#1}}
@@ -752,9 +721,7 @@ pdfsubject={LIPIcs, Vol.\@SeriesVolume, \@EventShortTitle; Copyright (C) \ifx\au
 \SeriesVolume{}
 \def\ArticleNo#1{\gdef\@ArticleNo{#1}}
 \ArticleNo{}
-\def\DOIPrefix#1{\gdef\@DOIPrefix{#1}}
-\DOIPrefix{10.4230/LIPIcs}
-\def\@lipicsdoi{\@DOIPrefix.\@EventAcronym.\@EventYear.\@ArticleNo}
+
 \def\and{\newline}
 \let\orig@author\@author
 \let\@authorsfortoc\@empty
@@ -786,10 +753,10 @@ pdfsubject={LIPIcs, Vol.\@SeriesVolume, \@EventShortTitle; Copyright (C) \ifx\au
 	\fi
     {\Large\bfseries
      \if!#1!
-       \textcolor{red}{Author: Please enter author name}%
+       \textcolor{red}{}%
      \else
        \ifx\authoranonymous\relax
-			\textcolor{red}{Anonymous author}
+			\textcolor{red}{}
 		\else
 			#1\,%
 			\ifx\compactauthor\relax\if!#3!\else{\,\href{mailto:#3}{\mailsymbol}}\fi%
@@ -806,7 +773,7 @@ pdfsubject={LIPIcs, Vol.\@SeriesVolume, \@EventShortTitle; Copyright (C) \ifx\au
      \fi
      }
 	{\small
-    \if!#2!\textcolor{red}{Author: Please enter affiliation as second parameter of the author macro}\else{\\* \ifx\authoranonymous\relax\textcolor{red}{Anonymous affiliation}\else\ifx\compactauthor\relax \affiliation \else#2\fi\fi}\fi
+    \if!#2!\textcolor{red}{}\else{\\* \ifx\authoranonymous\relax\textcolor{red}{}\else\ifx\compactauthor\relax \affiliation \else#2\fi\fi}\fi
     \ifx\compactauthor\relax\else\if!#3!\else{\ifx\authoranonymous\relax\else\\*\href{mailto:#3}{#3}\fi}\fi\fi
 	}\par
 	\ifx\authorcolumns\relax
@@ -852,10 +819,10 @@ pdfsubject={LIPIcs, Vol.\@SeriesVolume, \@EventShortTitle; Copyright (C) \ifx\au
     \href{https://creativecommons.org/licenses/by/4.0/}%
          {\smash{\lower\baselineskip\hbox{\unhcopy\@tempboxa}}}\enskip
     \textcopyright\ %
-    \ifx!#1!\textcolor{red}{Author: Please fill in the \string\Copyright\space macro}\else\ifx\authoranonymous\relax\textcolor{red}{Anonymous author(s)}\else#1\fi\fi
+    \ifx!#1!\textcolor{red}{}\else\ifx\authoranonymous\relax\textcolor{red}{}\else#1\fi\fi
     ;\\%
     licensed under Creative Commons License CC-BY 4.0\ifx!#1!\\\null\fi\par}}
-\Copyright{\textcolor{red}{Author: Please provide a copyright holder}}
+\Copyright{\textcolor{red}{}}
 \let\@copyrightholder\@empty
 \def\hideLIPIcs{\let\@hideLIPIcs\relax}
 \usepackage{xstring}
@@ -897,9 +864,7 @@ pdfsubject={LIPIcs, Vol.\@SeriesVolume, \@EventShortTitle; Copyright (C) \ifx\au
 \def\subjclassHeading{%
   \textcolor{lipicsGray}{\fontsize{9}{12}\sffamily\bfseries
                        2012 ACM Subject Classification\enskip}}
-\def\doiHeading{%
-  \textcolor{lipicsGray}{\fontsize{9}{12}\sffamily\bfseries
-                       Digital Object Identifier\enskip}}
+
 \def\category#1{\def\@category{#1}}
 \let\@category\@empty
 \def\categoryHeading{%
