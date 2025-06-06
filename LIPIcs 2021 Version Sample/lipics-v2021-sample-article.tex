@@ -1,5 +1,29 @@
 
-\documentclass[a4paper,UKenglish,cleveref, autoref, thm-restate]{lipics-v2021}
+\documentclass[
+  a4paper,
+  oneside,         % ← 單面模式，取消左右邊對稱排版
+  UKenglish,       % ← 英式英文斷字規則
+  cleveref,        % ← 使用 cleveref 自動引用
+  autoref,         % ← 使用 \autoref{...}
+  thm-restate      % ← 支援 Theorem restate
+]{lipics-v2021}
+
+%─────────────────────────────────────────────────────────────────────────
+%  (1) 先擋掉 lipics-v2021 裡面預設開的所有行號機制
+%      \nolinenumbers 只能 “不印出行號” ，但還是會保留行號的那段額外 margin。
+%      因此下面兩行要確保「不只不顯示」，而是「完全把 lineno 套件掐死」：
+%─────────────────────────────────────────────────────────────────────────
+
+\nolinenumbers
+\let\makeLineNumber\relax     % 關閉 makeLineNumber（lineno 內部指令）
+\let\thelinenumber\relax      % 關閉 thelinenumber
+\let\linenumberfont\relax     % 關閉 linenumberfont
+\let\linenumbers\relax        % 關閉 \linenumbers 指令
+\let\endlineumbers\relax      % 關閉 \endlineumbers
+\let\syncfootnotelinenumbers\relax
+\let\resetlinenumberwidth\relax
+\let\setrunninglinenumbers\relax
+\let\setpagewiselinenumbers\relax
 %This is a template for producing LIPIcs articles. 
 %See lipics-v2021-authors-guidelines.pdf for further information.
 %for A4 paper format use option "a4paper", for US-letter use option "letterpaper"
@@ -20,7 +44,7 @@
 \bibliographystyle{plainurl}% the mandatory bibstyle
 
 \title{A Modular Platform for Attack and Defense of Customizable Text-based CAPTCHAs}
-
+\pagestyle{empty}
 %\titlerunning{Dummy short title} %TODO optional, please use if title is longer than one line
 \usepackage{fontspec}
 \setmainfont{Times New Roman} % 英文
@@ -30,7 +54,7 @@
 \xeCJKsetup{CJKmath=true}
 \setCJKmainfont{Noto Serif CJK TC} % 同上
 
-\author{B12902036 吳述宇 \and {學號} 涂允貞 \and {學號} 陳塱鋒}{CNS Final Project Group 3, Spring 2025}{}{}{}
+\author{B12902036 吳述宇 \and {學號} 涂允貞 \and {學號} 陳塱鋒}{2025 Spring CNS}{}{}{}
 \renewcommand{\ccsdesc}[2][]{}
 % \authorrunning{}
 % \Copyright{}
@@ -43,7 +67,7 @@
 %\acknowledgements{}
 
 
-
+\nolinenumbers 
 %Editor-only macros:: begin (do not touch as author)%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -54,36 +78,13 @@
 
 %TODO mandatory: add short abstract of the document
 \begin{abstract}
-TODO : Add short abstract of the document
+CAPTCHA is an essential security mechanism widely used to differentiate humans from automated programs. However, recent advancements in deep learning have significantly weakened the robustness of traditional text-based CAPTCHAs. In this work, we propose a comprehensive CAPTCHA evaluation framework that enables customizable generation, configurable visual perturbations, and real-time model-based testing. Our platform combines a user-friendly GUI CAPTCHA generator with adjustable defense parameters and integrates inference capabilities from three distinct models: a lightweight Char-CNN, a moderately complex VGG16 classifier, and the widely-used Tesseract OCR engine. Experimental evaluations conducted across five difficulty levels—from clean to highly distorted—indicate that all tested models maintain at least 60\% accuracy even under severe perturbations, demonstrating moderate robustness. This prototype provides a practical and versatile solution for systematically assessing CAPTCHA designs against modern machine-learning-based threats with human-friendliness.
 \end{abstract}
 
 \section{Introduction}
 \label{sec:typesetting-summary}
 
-LIPIcs is a series of open access high-quality conference proceedings across all fields in informatics established in cooperation with Schloss Dagstuhl. 
-In order to do justice to the high scientific quality of the conferences that publish their proceedings in the LIPIcs series, which is ensured by the thorough review process of the respective events, we believe that LIPIcs proceedings must have an attractive and consistent layout matching the standard of the series.
-Moreover, the quality of the metadata, the typesetting and the layout must also meet the requirements of other external parties such as indexing service, DOI registry, funding agencies, among others. The guidelines contained in this document serve as the baseline for the authors, editors, and the publisher to create documents that meet as many different requirements as possible. 
-
-Please comply with the following instructions when preparing your article for a LIPIcs proceedings volume. 
-
-\begin{itemize}
-\item Do not use a different main font. (For example, the \texttt{times} package is forbidden.)
-\item Do not alter the spacing of the \texttt{lipics-v2021.cls} style file.
-\item Do not use \verb+enumitem+ and \verb+paralist+. (The \texttt{enumerate} package is preloaded, so you can use
- \verb+\begin{enumerate}[(a)]+ or the like.)
-\item Do not use ``self-made'' sectioning commands (e.\,g., \verb+\noindent{\bf My+ \verb+Paragraph}+).
-\item Do not hide large text blocks using comments or \verb+\iffalse+ $\ldots$ \verb+\fi+ constructions. 
-\item Do not use conditional structures to include/exclude content. Instead, please provide only the content that should be published -- in one file -- and nothing else.
-\item Do not wrap figures and tables with text. In particular, the package \texttt{wrapfig} is not supported.
-\item Do not change the bibliography style. In particular, do not use author-year citations. (The
-\texttt{natbib} package is not supported.)
-\end{itemize}
-
-\enlargethispage{\baselineskip}
-
-This is only a summary containing the most relevant details. Please read the complete document ``LIPIcs: Instructions for Authors and the \texttt{lipics-v2021} Class'' for all details and don't hesitate to contact Dagstuhl Publishing (\url{mailto:publishing@dagstuhl.de}) in case of questions or comments:
-\href{http://drops.dagstuhl.de/styles/lipics-v2021/lipics-v2021-authors/lipics-v2021-authors-guidelines.pdf}{\texttt{http://drops.dagstuhl.de/styles/lipics-v2021/\newline lipics-v2021-authors/lipics-v2021-authors-guidelines.pdf}}
-
+CAPTCHAs (Completely Automated Public Turing tests to tell Computers and Humans Apart) have become a fundamental security measure widely adopted to prevent automated abuse in web applications, such as spam, credential stuffing, and web scraping by bots. Due to their cost-effectiveness and ease of deployment, CAPTCHAs are ubiquitously utilized across numerous online platforms. However, advancements in machine learning, particularly optical character recognition (OCR) and convolutional neural networks (CNNs), have exposed significant vulnerabilities in traditional text-based CAPTCHAs, undermining their effectiveness as a reliable security measure. In response to this emerging threat, our study addresses the following research question -- How can we design and evaluate CAPTCHA systems that are resistant to deep learning-based attacks while maintaining usability for human users? To investigate this issue, we propose a modular CAPTCHA evaluation platform designed to systematically generate customizable CAPTCHA challenges, apply configurable visual perturbations, and conduct real-time testing using machine-learning-based attack models. Our approach involves integrating a user-friendly graphical user interface (GUI) with adjustable security parameters, and employing three representative models of varying complexity for evaluation: a lightweight Char-CNN classifier, a more robust VGG16 model, and the industry-standard Tesseract OCR engine. Unlike previous works that primarily assess CAPTCHA robustness through fixed datasets and limited scenarios, our framework supports extensive systematic testing across multiple configurable difficulty presets. This feature enables a more thorough and granular analysis of CAPTCHA robustness and weaknesses under diverse conditions, surpassing traditional evaluation methodologies that lack flexibility and comprehensive testing capabilities. Our main contributions in this paper include developing a GUI-based CAPTCHA generation platform supporting extensive customization of perturbations and visual styles, integrating three representative attack models (Char-CNN, VGG16, Tesseract OCR) to benchmark CAPTCHA security systematically, providing a unified and modular evaluation framework that enables fine-grained analysis of CAPTCHA effectiveness under controlled perturbation scenarios, delivering empirical results highlighting model robustness, vulnerabilities, and failure modes across different CAPTCHA difficulty tiers. Through this comprehensive framework, we aim to facilitate transparent, reproducible, and detailed evaluations of CAPTCHA designs in the context of evolving AI-driven threats.
 \section{Problem Definition}
 
 Lorem ipsum dolor sit amet, consectetur adipiscing elit \cite{DBLP:journals/cacm/Knuth74}. Praesent convallis orci arcu, eu mollis dolor. Aliquam eleifend suscipit lacinia. Maecenas quam mi, porta ut lacinia sed, convallis ac dui. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse potenti. Donec eget odio et magna ullamcorper vehicula ut vitae libero. Maecenas lectus nulla, auctor nec varius ac, ultricies et turpis. Pellentesque id ante erat. In hac habitasse platea dictumst. Curabitur a scelerisque odio. Pellentesque elit risus, posuere quis elementum at, pellentesque ut diam. Quisque aliquam libero id mi imperdiet quis convallis turpis eleifend. 
