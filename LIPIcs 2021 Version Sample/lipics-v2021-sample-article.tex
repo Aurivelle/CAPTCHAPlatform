@@ -57,7 +57,7 @@
 TODO : Add short abstract of the document
 \end{abstract}
 
-\section{Typesetting instructions -- Summary}
+\section{Introduction}
 \label{sec:typesetting-summary}
 
 LIPIcs is a series of open access high-quality conference proceedings across all fields in informatics established in cooperation with Schloss Dagstuhl. 
@@ -65,35 +65,7 @@ In order to do justice to the high scientific quality of the conferences that pu
 Moreover, the quality of the metadata, the typesetting and the layout must also meet the requirements of other external parties such as indexing service, DOI registry, funding agencies, among others. The guidelines contained in this document serve as the baseline for the authors, editors, and the publisher to create documents that meet as many different requirements as possible. 
 
 Please comply with the following instructions when preparing your article for a LIPIcs proceedings volume. 
-\paragraph*{Minimum requirements}
 
-\begin{itemize}
-\item Use pdflatex and an up-to-date \LaTeX{} system.
-\item Use further \LaTeX{} packages and custom made macros carefully and only if required.
-\item Use the provided sectioning macros: \verb+\section+, \verb+\subsection+, \verb+\subsubsection+, \linebreak \verb+\paragraph+, \verb+\paragraph*+, and \verb+\subparagraph*+.
-\item Provide suitable graphics of at least 300dpi (preferably in PDF format).
-\item Use BibTeX and keep the standard style (\verb+plainurl+) for the bibliography.
-\item Please try to keep the warnings log as small as possible. Avoid overfull \verb+\hboxes+ and any kind of warnings/errors with the referenced BibTeX entries.
-\item Use a spellchecker to correct typos.
-\end{itemize}
-
-\paragraph*{Mandatory metadata macros}
-Please set the values of the metadata macros carefully since the information parsed from these macros will be passed to publication servers, catalogues and search engines.
-Avoid placing macros inside the metadata macros. The following metadata macros/environments are mandatory:
-\begin{itemize}
-\item \verb+\title+ and, in case of long titles, \verb+\titlerunning+.
-\item \verb+\author+, one for each author, even if two or more authors have the same affiliation.
-\item \verb+\authorrunning+ and \verb+\Copyright+ (concatenated author names)\\
-The \verb+\author+ macros and the \verb+\Copyright+ macro should contain full author names (especially with regard to the first name), while \verb+\authorrunning+ should contain abbreviated first names.
-\item \verb+\ccsdesc+ (ACM classification, see \url{https://www.acm.org/publications/class-2012}).
-\item \verb+\keywords+ (a comma-separated list of keywords).
-\item \verb+\relatedversion+ (if there is a related version, typically the ``full version''); please make sure to provide a persistent URL, e.\,g., at arXiv.
-\item \verb+\begin{abstract}...\end{abstract}+ .
-\end{itemize}
-
-\paragraph*{Please do not \ldots} %Do not override the \texttt{\seriesstyle}-defaults}
-Generally speaking, please do not override the \texttt{lipics-v2021}-style defaults. To be more specific, a short checklist also used by Dagstuhl Publishing during the final typesetting is given below.
-In case of \textbf{non-compliance} with these rules Dagstuhl Publishing will remove the corresponding parts of \LaTeX{} code and \textbf{replace it with the \texttt{lipics-v2021} defaults}. In serious cases, we may reject the LaTeX-source and expect the corresponding author to revise the relevant parts.
 \begin{itemize}
 \item Do not use a different main font. (For example, the \texttt{times} package is forbidden.)
 \item Do not alter the spacing of the \texttt{lipics-v2021.cls} style file.
@@ -112,7 +84,7 @@ In case of \textbf{non-compliance} with these rules Dagstuhl Publishing will rem
 This is only a summary containing the most relevant details. Please read the complete document ``LIPIcs: Instructions for Authors and the \texttt{lipics-v2021} Class'' for all details and don't hesitate to contact Dagstuhl Publishing (\url{mailto:publishing@dagstuhl.de}) in case of questions or comments:
 \href{http://drops.dagstuhl.de/styles/lipics-v2021/lipics-v2021-authors/lipics-v2021-authors-guidelines.pdf}{\texttt{http://drops.dagstuhl.de/styles/lipics-v2021/\newline lipics-v2021-authors/lipics-v2021-authors-guidelines.pdf}}
 
-\section{Lorem ipsum dolor sit amet}
+\section{Problem Definition}
 
 Lorem ipsum dolor sit amet, consectetur adipiscing elit \cite{DBLP:journals/cacm/Knuth74}. Praesent convallis orci arcu, eu mollis dolor. Aliquam eleifend suscipit lacinia. Maecenas quam mi, porta ut lacinia sed, convallis ac dui. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse potenti. Donec eget odio et magna ullamcorper vehicula ut vitae libero. Maecenas lectus nulla, auctor nec varius ac, ultricies et turpis. Pellentesque id ante erat. In hac habitasse platea dictumst. Curabitur a scelerisque odio. Pellentesque elit risus, posuere quis elementum at, pellentesque ut diam. Quisque aliquam libero id mi imperdiet quis convallis turpis eleifend. 
 
@@ -150,20 +122,7 @@ This is a proposition
 
 \autoref{prop1} and \cref{prop1} \ldots
 
-\subsection{Curabitur dictum felis id sapien}
 
-Curabitur dictum \cref{lemma:curabitur} felis id sapien \autoref{lemma:curabitur} mollis ut venenatis tortor feugiat. Curabitur sed velit diam. Integer aliquam, nunc ac egestas lacinia, nibh est vehicula nibh, ac auctor velit tellus non arcu. Vestibulum lacinia ipsum vitae nisi ultrices eget gravida turpis laoreet. Duis rutrum dapibus ornare. Nulla vehicula vulputate iaculis. Proin a consequat neque. Donec ut rutrum urna. Morbi scelerisque turpis sed elit sagittis eu scelerisque quam condimentum. Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas. Aenean nec faucibus leo. Cras ut nisl odio, non tincidunt lorem. Integer purus ligula, venenatis et convallis lacinia, scelerisque at erat. Fusce risus libero, convallis at fermentum in, dignissim sed sem. Ut dapibus orci vitae nisl viverra nec adipiscing tortor condimentum \cite{DBLP:journals/cacm/Dijkstra68a}. Donec non suscipit lorem. Nam sit amet enim vitae nisl accumsan pretium. 
-
-\begin{lstlisting}[caption={Useless code.},label=list:8-6,captionpos=t,float,abovecaptionskip=-\medskipamount]
-for i:=maxint to 0 do 
-begin 
-    j:=square(root(i));
-end;
-\end{lstlisting}
-
-\subsection{Proin ac fermentum augue}
-
-Proin ac fermentum augue. Nullam bibendum enim sollicitudin tellus egestas lacinia euismod orci mollis. Nulla facilisi. Vivamus volutpat venenatis sapien, vitae feugiat arcu fringilla ac. Mauris sapien tortor, sagittis eget auctor at, vulputate pharetra magna. Sed congue, dui nec vulputate convallis, sem nunc adipiscing dui, vel venenatis mauris sem in dui. Praesent a pretium quam. Mauris non mauris sit amet eros rutrum aliquam id ut sapien. Nulla aliquet fringilla sagittis. Pellentesque eu metus posuere nunc tincidunt dignissim in tempor dolor. Nulla cursus aliquet enim. Cras sapien risus, accumsan eu cursus ut, commodo vel velit. Praesent aliquet consectetur ligula, vitae iaculis ligula interdum vel. Integer faucibus faucibus felis. 
 
 \begin{itemize}
 \item Ut vitae diam augue. 
@@ -175,7 +134,10 @@ Proin ac fermentum augue. Nullam bibendum enim sollicitudin tellus egestas lacin
 content...
 \end{remark}
 
-\section{Pellentesque quis tortor}
+\section{Results}
+\subsection{System Design}
+\subsection{Experiment Settings}
+\subsection{Results and Evaluation}
 
 Nec urna malesuada sollicitudin. Nulla facilisi. Vivamus aliquam tempus ligula eget ornare. Praesent eget magna ut turpis mattis cursus. Aliquam vel condimentum orci. Nunc congue, libero in gravida convallis \cite{DBLP:conf/focs/HopcroftPV75}, orci nibh sodales quam, id egestas felis mi nec nisi. Suspendisse tincidunt, est ac vestibulum posuere, justo odio bibendum urna, rutrum bibendum dolor sem nec tellus. 
 
@@ -185,7 +147,7 @@ Sed interdum nisl pretium non. Mauris sodales consequat risus vel consectetur. A
 
 Fusce eu leo nisi. Cras eget orci neque, eleifend dapibus felis. Duis et leo dui. Nam vulputate, velit et laoreet porttitor, quam arcu facilisis dui, sed malesuada risus massa sit amet neque.
 
-\section{Morbi eros magna}
+\section{Related Work}
 
 Morbi eros magna, vestibulum non posuere non, porta eu quam. Maecenas vitae orci risus, eget imperdiet mauris. Donec massa mauris, pellentesque vel lobortis eu, molestie ac turpis. Sed condimentum convallis dolor, a dignissim est ultrices eu. Donec consectetur volutpat eros, et ornare dui ultricies id. Vivamus eu augue eget dolor euismod ultrices et sit amet nisi. Vivamus malesuada leo ac leo ullamcorper tempor. Donec justo mi, tempor vitae aliquet non, faucibus eu lacus. Donec dictum gravida neque, non porta turpis imperdiet eget. Curabitur quis euismod ligula. 
 
@@ -200,7 +162,7 @@ Morbi eros magna, vestibulum non posuere non, porta eu quam. Maecenas vitae orci
 
 \appendix
 
-\section{Styles of lists, enumerations, and descriptions}\label{sec:itemStyles}
+\section{Conclusion and Future Work}\label{sec:itemStyles}
 
 List of different predefined enumeration styles:
 
@@ -248,7 +210,7 @@ List of different predefined enumeration styles:
 
 \cref{testenv-proposition} and \autoref{testenv-proposition} ...
 
-\section{Theorem-like environments}\label{sec:theorem-environments}
+\section{References}\label{sec:theorem-environments}
 
 List of different predefined enumeration styles:
 
