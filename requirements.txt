@@ -5,12 +5,11 @@ opencv_contrib_python==4.11.0.86
 opencv_python==4.11.0.86
 pandas==2.2.3
 Pillow==11.2.1
-pycassa==1.11.2
 pytesseract==0.3.13
 scikit_learn==1.6.1
 scipy==1.15.3
 setuptools==75.6.0
-skimage==0.0
+scikit-image==0.20.0
 streamlit==1.45.1
 torch==2.7.0
 torchvision==0.22.0
